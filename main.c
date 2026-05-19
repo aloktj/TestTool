@@ -21,6 +21,8 @@ static void settings_init_defaults(app_settings_t *s) {
   s->poll_interval_ms = 1000;
   s->websocket_enabled = true;
   s->auth_required = true;
+  s->digest_auth_enabled = false;
+  s->jwt_enabled = false;
   s->demo_mode = true;
 }
 
@@ -63,4 +65,3 @@ int main(void) {
   mg_mgr_free(&mgr);
   return 0;
 }
-

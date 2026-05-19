@@ -44,6 +44,11 @@ static bool parse_login_body(struct mg_http_message *hm, char *username,
     int rp = mg_http_get_var(&hm->body, "password", password, password_len);
     if (ru > 0 || rp > 0) got_any = true;
   }
+  if (!got_any) {
+    int ru = mg_http_get_var(&hm->query, "username", username, username_len);
+    int rp = mg_http_get_var(&hm->query, "password", password, password_len);
+    if (ru > 0 || rp > 0) got_any = true;
+  }
 
   return got_any && username[0] != '\0' && password[0] != '\0';
 }
@@ -98,4 +103,3 @@ void api_auth_me(struct mg_connection *c, const user_t *user) {
                 user->username, auth_role_to_string(user->role),
                 auth_permissions_json_for_role(user->role));
 }
-
