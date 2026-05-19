@@ -111,11 +111,15 @@ static void routes_handle_http(struct mg_connection *c,
 
   // Auth APIs
   if (uri_is(hm, "/api/auth/login")) {
-    if (!method_is(hm, "POST")) return reply_method_not_allowed(c);
+    if (!method_is(hm, "POST") && !method_is(hm, "GET")) {
+      return reply_method_not_allowed(c);
+    }
     return api_auth_login(c, hm);
   }
   if (uri_is(hm, "/api/auth/logout")) {
-    if (!method_is(hm, "POST")) return reply_method_not_allowed(c);
+    if (!method_is(hm, "POST") && !method_is(hm, "GET")) {
+      return reply_method_not_allowed(c);
+    }
     user = auth_require_role(c, hm, ROLE_OPERATOR);
     if (user == NULL) return;
     return api_auth_logout(c, user);
