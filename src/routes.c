@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "app.h"
 #include "api_auth.h"
@@ -45,6 +46,29 @@ static void route_redirect_index(struct mg_connection *c) {
   mg_http_reply(c, 302, "Location: /index.html\r\n", "");
 }
 
+
+static bool file_exists(const char *path) {
+  FILE *fp = fopen(path, "rb");
+  if (fp == NULL) return false;
+  fclose(fp);
+  return true;
+}
+
+static void serve_index_with_fallback(struct mg_connection *c,
+                                      struct mg_http_message *hm) {
+  if (file_exists("web/index.html")) {
+    mg_http_serve_file(c, hm, "web/index.html", NULL);
+    return;
+  }
+
+  if (file_exists("web/index_fallback.html")) {
+    mg_http_serve_file(c, hm, "web/index_fallback.html", NULL);
+    return;
+  }
+
+  mg_http_reply(c, 404, "Content-Type: text/plain\r\n",
+                "Missing web/index.html and web/index_fallback.html\n");
+}
 static void serve_static(struct mg_connection *c, struct mg_http_message *hm) {
   struct mg_http_serve_opts opts;
   memset(&opts, 0, sizeof(opts));
@@ -64,6 +88,11 @@ static void routes_handle_http(struct mg_connection *c,
   if (uri_is(hm, "/")) {
     if (!method_is(hm, "GET")) return reply_method_not_allowed(c);
     return route_redirect_index(c);
+  }
+
+  if (uri_is(hm, "/index.html")) {
+    if (!method_is(hm, "GET")) return reply_method_not_allowed(c);
+    return serve_index_with_fallback(c, hm);
   }
 
   // Public APIs
