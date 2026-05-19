@@ -30,6 +30,7 @@ http://localhost:8000/
 
 - Static web root: `./web`
 - Default entry: `./web/index.html`
+- Automatic fallback page: `./web/index_fallback.html` (served when `index.html` is missing).
 - Authentication can be disabled at runtime via `POST /api/settings/write` with
   `{"authRequired": false}` (admin token still required for the change itself).
 - Demo users:
