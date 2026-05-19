@@ -1,7 +1,7 @@
 #include "api_control.h"
 
 void api_control_start(struct mg_connection *c) {
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"accepted\":true,"
                 "\"command\":\"start\","
@@ -10,7 +10,7 @@ void api_control_start(struct mg_connection *c) {
 }
 
 void api_control_stop(struct mg_connection *c) {
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"accepted\":true,"
                 "\"command\":\"stop\","

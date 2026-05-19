@@ -34,7 +34,7 @@ void websocket_handle_upgrade(struct mg_connection *c, struct mg_http_message *h
   const user_t *u = NULL;
 
   if (ctx != NULL && !ctx->settings.websocket_enabled) {
-    mg_http_reply(c, 503, "Content-Type: application/json\r\n",
+    mg_http_reply(c, 503, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                   "{\"error\":\"unavailable\",\"message\":\"WebSockets disabled\"}");
     return;
   }

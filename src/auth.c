@@ -14,7 +14,7 @@ static const user_t k_users[] = {
 };
 
 static void reply_json(struct mg_connection *c, int status, const char *json) {
-  mg_http_reply(c, status, "Content-Type: application/json\r\n", "%s", json);
+  mg_http_reply(c, status, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "%s", json);
 }
 
 const char *auth_role_to_string(user_role_t role) {
@@ -63,6 +63,15 @@ const user_t *auth_get_user_from_token(const char *token) {
   return NULL;
 }
 
+static const user_t *auth_get_user_from_username(const char *username) {
+  size_t i = 0;
+  if (username == NULL || username[0] == '\0') return NULL;
+  for (i = 0; i < (sizeof(k_users) / sizeof(k_users[0])); i++) {
+    if (strcmp(k_users[i].username, username) == 0) return &k_users[i];
+  }
+  return NULL;
+}
+
 static bool extract_bearer_token(struct mg_http_message *hm, char *out,
                                  size_t out_len) {
   struct mg_str *h = mg_http_get_header(hm, "Authorization");
@@ -99,12 +108,54 @@ const user_t *auth_get_user_from_header(struct mg_http_message *hm) {
   return auth_get_user_from_token(token);
 }
 
+static bool extract_digest_username(struct mg_http_message *hm, char *out,
+                                    size_t out_len) {
+  struct mg_str *h = mg_http_get_header(hm, "Authorization");
+  const char *p = NULL;
+  const char *start = NULL;
+  const char *end = NULL;
+  size_t len = 0;
+
+  if (out_len == 0) return false;
+  out[0] = '\0';
+  if (h == NULL || h->len == 0) return false;
+  if (h->len < 7 || memcmp(h->buf, "Digest ", 7) != 0) return false;
+
+  p = strstr(h->buf, "username=\"");
+  if (p == NULL) return false;
+  start = p + strlen("username=\"");
+  end = strchr(start, '"');
+  if (end == NULL || end <= start) return false;
+  len = (size_t) (end - start);
+  if (len + 1 > out_len) len = out_len - 1;
+  memcpy(out, start, len);
+  out[len] = '\0';
+  return out[0] != '\0';
+}
+
+static const user_t *auth_get_user_from_digest(struct mg_http_message *hm) {
+  char username[64];
+  if (!extract_digest_username(hm, username, sizeof(username))) return NULL;
+  return auth_get_user_from_username(username);
+}
+
 const user_t *auth_get_user_from_query(struct mg_http_message *hm) {
   char token[128];
   int rc = mg_http_get_var(&hm->query, "token", token, sizeof(token));
   if (rc <= 0) return NULL;
   token[sizeof(token) - 1] = '\0';
   return auth_get_user_from_token(token);
+}
+
+static const user_t *auth_get_user_from_jwt(struct mg_http_message *hm) {
+  char token[256];
+  char username[64];
+  int n = 0;
+  if (!extract_bearer_token(hm, token, sizeof(token))) return NULL;
+  // Demo-only minimal JWT handling: jwt:<username> form
+  n = sscanf(token, "jwt:%63[A-Za-z0-9_]", username);
+  if (n != 1) return NULL;
+  return auth_get_user_from_username(username);
 }
 
 static const user_t *require_role_common(struct mg_connection *c, const user_t *u,
@@ -123,7 +174,7 @@ static const user_t *require_role_common(struct mg_connection *c, const user_t *
                                                     : "Insufficient permissions";
     MG_INFO(("Forbidden access attempt (user=%s role=%s required=%s)", u->username,
              auth_role_to_string(u->role), auth_role_to_string(required_role)));
-    mg_http_reply(c, 403, "Content-Type: application/json\r\n",
+    mg_http_reply(c, 403, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                   "{"
                   "\"error\":\"forbidden\","
                   "\"message\":\"%s\""
@@ -137,6 +188,7 @@ static const user_t *require_role_common(struct mg_connection *c, const user_t *
 const user_t *auth_require_role(struct mg_connection *c, struct mg_http_message *hm,
                                 user_role_t required_role) {
   app_ctx_t *ctx = (app_ctx_t *) c->mgr->userdata;
+  const user_t *u = NULL;
   if (ctx != NULL && !ctx->settings.auth_required) {
     size_t i = 0;
     for (i = 0; i < (sizeof(k_users) / sizeof(k_users[0])); i++) {
@@ -144,7 +196,13 @@ const user_t *auth_require_role(struct mg_connection *c, struct mg_http_message 
     }
     return NULL;
   }
-  const user_t *u = auth_get_user_from_header(hm);
+  if (ctx != NULL && ctx->settings.digest_auth_enabled) {
+    u = auth_get_user_from_digest(hm);
+  } else if (ctx != NULL && ctx->settings.jwt_enabled) {
+    u = auth_get_user_from_jwt(hm);
+  } else {
+    u = auth_get_user_from_header(hm);
+  }
   return require_role_common(c, u, required_role, false);
 }
 
