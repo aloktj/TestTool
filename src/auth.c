@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "app.h"
+
 static const user_t k_users[] = {
     {"operator", "operator123", "token_operator", ROLE_OPERATOR},
     {"maint", "maint123", "token_maintenance", ROLE_MAINTENANCE},
@@ -134,6 +136,14 @@ static const user_t *require_role_common(struct mg_connection *c, const user_t *
 
 const user_t *auth_require_role(struct mg_connection *c, struct mg_http_message *hm,
                                 user_role_t required_role) {
+  app_ctx_t *ctx = (app_ctx_t *) c->mgr->userdata;
+  if (ctx != NULL && !ctx->settings.auth_required) {
+    size_t i = 0;
+    for (i = 0; i < (sizeof(k_users) / sizeof(k_users[0])); i++) {
+      if (k_users[i].role >= required_role) return &k_users[i];
+    }
+    return NULL;
+  }
   const user_t *u = auth_get_user_from_header(hm);
   return require_role_common(c, u, required_role, false);
 }
@@ -141,6 +151,14 @@ const user_t *auth_require_role(struct mg_connection *c, struct mg_http_message 
 const user_t *auth_require_ws_role(struct mg_connection *c,
                                    struct mg_http_message *hm,
                                    user_role_t required_role) {
+  app_ctx_t *ctx = (app_ctx_t *) c->mgr->userdata;
+  if (ctx != NULL && !ctx->settings.auth_required) {
+    size_t i = 0;
+    for (i = 0; i < (sizeof(k_users) / sizeof(k_users[0])); i++) {
+      if (k_users[i].role >= required_role) return &k_users[i];
+    }
+    return NULL;
+  }
   const user_t *u = auth_get_user_from_query(hm);
   return require_role_common(c, u, required_role, true);
 }

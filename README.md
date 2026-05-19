@@ -30,6 +30,8 @@ http://localhost:8000/
 
 - Static web root: `./web`
 - Default entry: `./web/index.html`
+- Authentication can be disabled at runtime via `POST /api/settings/write` with
+  `{"authRequired": false}` (admin token still required for the change itself).
 - Demo users:
   - `operator` / `operator123` → `token_operator`
   - `maint` / `maint123` → `token_maintenance`
