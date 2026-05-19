@@ -12,7 +12,7 @@ static uint64_t unix_time_sec_estimate(void) {
 
 void api_data_temperature(struct mg_connection *c, const app_ctx_t *ctx) {
   const demo_live_data_t *d = &ctx->live;
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"temperatureC\":%.1f,"
                 "\"humidityPercent\":%d,"
@@ -30,7 +30,7 @@ void api_data_sensors(struct mg_connection *c, const app_ctx_t *ctx) {
   double p = d->pressure_bar;
   const char *state_c = (d->sequence % 7 == 0) ? "WARNING" : "OK";
 
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"sensors\":["
                 "{"
@@ -67,7 +67,7 @@ void api_data_alarms(struct mg_connection *c, const app_ctx_t *ctx) {
       (seq % 2 == 0) ? "Demo alarm event" : "High temperature warning";
   int id_latest = (seq % 2 == 0) ? 1003 : 1001;
 
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"activeCount\":%d,"
                 "\"alarms\":["
@@ -99,7 +99,7 @@ void api_data_chart(struct mg_connection *c, const app_ctx_t *ctx) {
   double y1 = d->temperature_c - 0.2;
   double y2 = d->temperature_c + 0.4;
 
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"points\":["
                 "{\"x\":\"10:00\",\"y\":%.1f},"

@@ -5,7 +5,7 @@
 #include <string.h>
 
 static void reply_invalid_login(struct mg_connection *c) {
-  mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 401, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"success\":false,"
                 "\"error\":\"invalid_credentials\","
@@ -71,7 +71,7 @@ void api_auth_login(struct mg_connection *c, struct mg_http_message *hm) {
 
   MG_INFO(("Login success (user=%s role=%s)", user->username,
            auth_role_to_string(user->role)));
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"success\":true,"
                 "\"token\":\"%s\","
@@ -85,7 +85,7 @@ void api_auth_login(struct mg_connection *c, struct mg_http_message *hm) {
 
 void api_auth_logout(struct mg_connection *c, const user_t *user) {
   (void) user;
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"success\":true,"
                 "\"message\":\"Logged out\""
@@ -93,7 +93,7 @@ void api_auth_logout(struct mg_connection *c, const user_t *user) {
 }
 
 void api_auth_me(struct mg_connection *c, const user_t *user) {
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"authenticated\":true,"
                 "\"username\":\"%s\","

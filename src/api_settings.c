@@ -4,7 +4,7 @@
 
 void api_settings_read(struct mg_connection *c, const app_ctx_t *ctx) {
   const app_settings_t *s = &ctx->settings;
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"pollIntervalMs\":%d,"
                 "\"websocketEnabled\":%s,"
@@ -44,7 +44,7 @@ void api_settings_write(struct mg_connection *c, struct mg_http_message *hm,
   apply_bool_if_present(hm->body, "$.jwtEnabled", &s->jwt_enabled);
   apply_bool_if_present(hm->body, "$.demoMode", &s->demo_mode);
 
-  mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+  mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"saved\":true,"
                 "\"message\":\"Settings updated\""

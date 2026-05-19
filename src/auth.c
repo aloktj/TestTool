@@ -14,7 +14,7 @@ static const user_t k_users[] = {
 };
 
 static void reply_json(struct mg_connection *c, int status, const char *json) {
-  mg_http_reply(c, status, "Content-Type: application/json\r\n", "%s", json);
+  mg_http_reply(c, status, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "%s", json);
 }
 
 const char *auth_role_to_string(user_role_t role) {
@@ -174,7 +174,7 @@ static const user_t *require_role_common(struct mg_connection *c, const user_t *
                                                     : "Insufficient permissions";
     MG_INFO(("Forbidden access attempt (user=%s role=%s required=%s)", u->username,
              auth_role_to_string(u->role), auth_role_to_string(required_role)));
-    mg_http_reply(c, 403, "Content-Type: application/json\r\n",
+    mg_http_reply(c, 403, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                   "{"
                   "\"error\":\"forbidden\","
                   "\"message\":\"%s\""

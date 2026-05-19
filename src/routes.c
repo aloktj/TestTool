@@ -28,7 +28,12 @@ static bool uri_starts_with(struct mg_http_message *hm, const char *prefix) {
 }
 
 static void reply_json(struct mg_connection *c, int status, const char *json) {
-  mg_http_reply(c, status, "Content-Type: application/json\r\n", "%s", json);
+  mg_http_reply(c, status,
+                "Content-Type: application/json\r\n"
+                "Access-Control-Allow-Origin: *\r\n"
+                "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                "Access-Control-Allow-Headers: Content-Type, Authorization\r\n",
+                "%s", json);
 }
 
 static void reply_method_not_allowed(struct mg_connection *c) {
@@ -80,6 +85,15 @@ static void routes_handle_http(struct mg_connection *c,
                                struct mg_http_message *hm) {
   app_ctx_t *ctx = (app_ctx_t *) c->mgr->userdata;
   const user_t *user = NULL;
+
+  if (method_is(hm, "OPTIONS") && uri_starts_with(hm, "/api/")) {
+    return mg_http_reply(c, 204,
+                         "Access-Control-Allow-Origin: *\r\n"
+                         "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                         "Access-Control-Allow-Headers: Content-Type, Authorization\r\n"
+                         "Access-Control-Max-Age: 86400\r\n",
+                         "");
+  }
 
   if (uri_starts_with(hm, "/api/") || uri_starts_with(hm, "/ws/")) {
     log_http_request(hm);
