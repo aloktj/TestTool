@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebBuilder API Demo Server</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 20px; }
+      .row { display: flex; gap: 16px; flex-wrap: wrap; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; min-width: 320px; }
+      .card h2 { margin: 0 0 10px; font-size: 16px; }
+      label { display: block; font-size: 12px; color: #444; margin-top: 8px; }
+      input { width: 100%; padding: 8px; box-sizing: border-box; }
+      button { padding: 8px 10px; margin: 6px 6px 0 0; cursor: pointer; }
+      pre { background: #0b1020; color: #d7e3ff; padding: 10px; border-radius: 10px; overflow: auto; max-height: 280px; }
+      .muted { color: #666; font-size: 12px; }
+      .ok { color: #0a7; }
+      .bad { color: #c33; }
+    </style>
+  </head>
+  <body>
+    <h1>WebBuilder API Demo Server</h1>
+    <div class="muted">
+      Test UI for public APIs, login, protected APIs, admin-only settings, and WebSockets.
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2>Session</h2>
+        <div id="sessionStatus" class="muted"></div>
+        <button onclick="clearToken()">Clear token</button>
+      </div>
+
+      <div class="card">
+        <h2>Public APIs</h2>
+        <button onclick="callGet('/api/public/health')">GET /api/public/health</button>
+        <button onclick="callGet('/api/public/version')">GET /api/public/version</button>
+        <button onclick="callGet('/api/public/system-info')">GET /api/public/system-info</button>
+      </div>
+
+      <div class="card">
+        <h2>Login</h2>
+        <label>Username</label>
+        <input id="username" value="operator" />
+        <label>Password</label>
+        <input id="password" type="password" value="operator123" />
+        <button onclick="login()">POST /api/auth/login</button>
+        <button onclick="callGet('/api/auth/me')">GET /api/auth/me</button>
+        <button onclick="callPost('/api/auth/logout', {})">POST /api/auth/logout</button>
+        <div class="muted">Demo users: operator/maint/admin</div>
+      </div>
+
+      <div class="card">
+        <h2>Protected Data APIs (Operator+)</h2>
+        <button onclick="callGet('/api/data/temperature')">GET /api/data/temperature</button>
+        <button onclick="callGet('/api/data/sensors')">GET /api/data/sensors</button>
+        <button onclick="callGet('/api/data/alarms')">GET /api/data/alarms</button>
+        <button onclick="callGet('/api/data/chart')">GET /api/data/chart</button>
+      </div>
+
+      <div class="card">
+        <h2>Control (Operator+)</h2>
+        <button onclick="callPost('/api/control/start', {})">POST /api/control/start</button>
+        <button onclick="callPost('/api/control/stop', {})">POST /api/control/stop</button>
+      </div>
+
+      <div class="card">
+        <h2>Settings</h2>
+        <button onclick="callGet('/api/settings/read')">GET /api/settings/read</button>
+        <label>Write JSON (Admin only)</label>
+        <input id="settingsJson" value='{"pollIntervalMs":2000,"websocketEnabled":true}' />
+        <button onclick="settingsWrite()">POST /api/settings/write</button>
+      </div>
+
+      <div class="card">
+        <h2>WebSockets</h2>
+        <div class="muted">Uses `?token=...` query param</div>
+        <button onclick="wsConnect('live')">Connect /ws/live</button>
+        <button onclick="wsConnect('alarms')">Connect /ws/alarms</button>
+        <button onclick="wsDisconnect()">Disconnect</button>
+        <div id="wsStatus" class="muted"></div>
+      </div>
+    </div>
+
+    <h2>Output</h2>
+    <pre id="out"></pre>
+
+    <script>
+      let token = localStorage.getItem("token") || "";
+      let ws = null;
+
+      function setOut(obj) {
+        const el = document.getElementById("out");
+        if (typeof obj === "string") el.textContent = obj;
+        else el.textContent = JSON.stringify(obj, null, 2);
+      }
+
+      function setSessionStatus() {
+        const el = document.getElementById("sessionStatus");
+        if (!token) {
+          el.innerHTML = `<span class="bad">No token set</span>`;
+          return;
+        }
+        el.innerHTML = `<span class="ok">Token:</span> <code>${token}</code>`;
+      }
+
+      function authHeaders() {
+        return token ? { Authorization: "Bearer " + token } : {};
+      }
+
+      async function callGet(path) {
+        const res = await fetch(path, { headers: { ...authHeaders() } });
+        const text = await res.text();
+        try { setOut({ status: res.status, json: JSON.parse(text) }); }
+        catch { setOut({ status: res.status, text }); }
+      }
+
+      async function callPost(path, body) {
+        const res = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify(body || {}),
+        });
+        const text = await res.text();
+        try { setOut({ status: res.status, json: JSON.parse(text) }); }
+        catch { setOut({ status: res.status, text }); }
+      }
+
+      async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data && data.success && data.token) {
+          token = data.token;
+          localStorage.setItem("token", token);
+          setSessionStatus();
+        }
+        setOut({ status: res.status, json: data });
+      }
+
+      function clearToken() {
+        token = "";
+        localStorage.removeItem("token");
+        setSessionStatus();
+        setOut("Token cleared.");
+      }
+
+      function wsDisconnect() {
+        if (ws) ws.close();
+        ws = null;
+        document.getElementById("wsStatus").textContent = "disconnected";
+      }
+
+      function wsConnect(kind) {
+        wsDisconnect();
+        const t = token || "";
+        const url = `ws://${location.host}/ws/${kind}?token=${encodeURIComponent(t)}`;
+        ws = new WebSocket(url);
+        document.getElementById("wsStatus").textContent = "connecting...";
+
+        ws.onopen = () => {
+          document.getElementById("wsStatus").textContent = `connected (${kind})`;
+        };
+        ws.onclose = () => {
+          document.getElementById("wsStatus").textContent = "disconnected";
+        };
+        ws.onerror = () => {
+          document.getElementById("wsStatus").textContent = "error";
+        };
+        ws.onmessage = (ev) => {
+          let obj = null;
+          try { obj = JSON.parse(ev.data); } catch {}
+          setOut({ ws: kind, message: obj || ev.data });
+        };
+      }
+
+      async function settingsWrite() {
+        const txt = document.getElementById("settingsJson").value;
+        let obj = {};
+        try { obj = JSON.parse(txt); } catch { obj = {}; }
+        await callPost("/api/settings/write", obj);
+      }
+
+      setSessionStatus();
+    </script>
+  </body>
+</html>
+
