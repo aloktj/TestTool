@@ -37,8 +37,8 @@ http://localhost:8000/
   `POST /api/settings/write`:
   - `digestAuthEnabled: true` -> API accepts `Authorization: Digest ...` and
     maps `username="..."` to demo users.
-  - `jwtEnabled: true` -> API accepts demo JWT-like bearer tokens in the form
-    `Authorization: Bearer jwt:<username>`.
+  - `jwtEnabled: true` -> login issues HS256 JWT bearer tokens and protected
+    APIs validate signature + expiry.
   - When both are disabled, regular bearer tokens from login are used.
 - Demo users:
   - `operator` / `operator123` → `token_operator`
