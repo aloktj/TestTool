@@ -19,6 +19,7 @@ typedef struct {
 
 const user_t *auth_login(const char *username, const char *password);
 const user_t *auth_get_user_from_token(const char *token);
+bool auth_generate_jwt_for_user(const user_t *user, char *out, size_t out_len);
 
 const user_t *auth_get_user_from_header(struct mg_http_message *hm);
 const user_t *auth_get_user_from_query(struct mg_http_message *hm);
@@ -33,4 +34,3 @@ const char *auth_role_to_string(user_role_t role);
 const char *auth_permissions_json_for_role(user_role_t role);
 
 #endif  // WEBBUILDER_API_DEMO_AUTH_H
-

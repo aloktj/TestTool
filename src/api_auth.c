@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "app.h"
+
 static void reply_invalid_login(struct mg_connection *c) {
   mg_http_reply(c, 401, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
@@ -55,6 +57,8 @@ static bool parse_login_body(struct mg_http_message *hm, char *username,
 
 void api_auth_login(struct mg_connection *c, struct mg_http_message *hm) {
   char username[64], password[64];
+  char token[768];
+  app_ctx_t *ctx = (app_ctx_t *) c->mgr->userdata;
   const user_t *user = NULL;
 
   MG_INFO(("Login attempt"));
@@ -71,6 +75,18 @@ void api_auth_login(struct mg_connection *c, struct mg_http_message *hm) {
 
   MG_INFO(("Login success (user=%s role=%s)", user->username,
            auth_role_to_string(user->role)));
+
+  if (ctx != NULL && ctx->settings.jwt_enabled) {
+    if (!auth_generate_jwt_for_user(user, token, sizeof(token))) {
+      return mg_http_reply(c, 500,
+                           "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                           "{\"success\":false,\"error\":\"jwt_generation_failed\"}");
+    }
+  } else {
+    strncpy(token, user->token, sizeof(token) - 1);
+    token[sizeof(token) - 1] = '\0';
+  }
+
   mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
                 "{"
                 "\"success\":true,"
@@ -79,7 +95,7 @@ void api_auth_login(struct mg_connection *c, struct mg_http_message *hm) {
                 "\"role\":\"%s\","
                 "\"permissions\":%s"
                 "}",
-                user->token, user->username, auth_role_to_string(user->role),
+                token, user->username, auth_role_to_string(user->role),
                 auth_permissions_json_for_role(user->role));
 }
 
